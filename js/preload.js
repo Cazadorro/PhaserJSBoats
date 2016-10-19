@@ -1,5 +1,5 @@
 var preload = function (game) {
-}
+};
 
 preload.prototype = {
     preload: function () {
@@ -18,4 +18,4 @@ preload.prototype = {
     create: function () {
         this.game.state.start("TitleScreen");
     }
-}
+};
