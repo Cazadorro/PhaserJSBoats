@@ -1,102 +1,3 @@
-//  Our core Bullet class
-//  This is a simple Sprite object that we set a few properties on
-//  It is fired by all of the Weapon classes
-
-// Bullet - subclass of Phaser.Sprite
-var Bullet = function (game, key) {
-    // this is how we do inheritance in javascript, calls the sprite constructor
-    Phaser.Sprite.call(this, game, 0, 0, key);
-
-    this.texture.baseTexture.scaleMode = PIXI.scaleModes.NEAREST;
-
-    this.anchor.set(0.5);
-
-    this.checkWorldBounds = true;
-    this.outOfBoundsKill = true;
-    this.exists = false;
-
-    this.tracking = false;
-    this.scaleSpeed = 0;
-
-};
-
-// subclass extends superclass, bullet is subclass of super class Phaser.sprite
-Bullet.prototype = Object.create(Phaser.Sprite.prototype);
-Bullet.prototype.constructor = Bullet;
-
-// adding a member function
-Bullet.prototype.fire = function (x, y, angle, speed, gx, gy) {
-
-    gx = gx || 0;
-    gy = gy || 0;
-
-    this.reset(x, y);
-    this.scale.set(1);
-
-    this.game.physics.arcade.velocityFromAngle(angle, speed, this.body.velocity);
-
-    this.angle = angle;
-
-    this.body.gravity.set(gx, gy);
-
-};
-
-Bullet.prototype.update = function () {
-
-    if (this.tracking) {
-        this.rotation = Math.atan2(this.body.velocity.y, this.body.velocity.x);
-    }
-
-    if (this.scaleSpeed > 0) {
-        this.scale.x += this.scaleSpeed;
-        this.scale.y += this.scaleSpeed;
-    }
-
-};
-
-var Weapon = {};
-
-////////////////////////////////////////////////////
-//  A single bullet is fired in front of the ship //
-////////////////////////////////////////////////////
-
-Weapon.SingleBullet = function (game) {
-    // inherits from group, now of type group object
-    Phaser.Group.call(this, game, game.world, 'Single Bullet', false, true, Phaser.Physics.ARCADE);
-
-    this.nextFire = 0;
-    this.bulletSpeed = 100;
-    this.fireRate = 300;
-
-    for (var i = 0; i < 64; i++) {
-        this.add(new Bullet(game, 'boatbullet1'), true);
-    }
-
-    return this;
-
-};
-
-Weapon.SingleBullet.prototype = Object.create(Phaser.Group.prototype);
-Weapon.SingleBullet.prototype.constructor = Weapon.SingleBullet;
-
-Weapon.SingleBullet.prototype.fire = function (source, destination) {
-
-    if (this.game.time.time < this.nextFire) {
-        return;
-    }
-
-    var x = source.x;
-    var y = source.y;
-    var xy = new Phaser.Point(x, y);
-    var angle = xy.angle(destination, true); //this.game.physics.arcade.angleToXY(source, destination.x, destination.y);
-    var bullet_to_fire = this.getFirstExists(false);
-    if (bullet_to_fire) {
-        bullet_to_fire.fire(x, y, angle, this.bulletSpeed, 0, 0);
-    }
-
-    this.nextFire = this.game.time.time + this.fireRate;
-
-};
 
 var boatsGame = function (game) {
     spriteNumber = null;
@@ -216,7 +117,7 @@ boatsGame.prototype = {
         this.speedAccel = 4;
         this.tailSpeed = 3;
 
-        this.weapon = new Weapon.SingleBullet(this.game);
+        this.weapon = new Weapon.Bullets(this.game);
         this.weapon.visible = true;
 
         var style = {font: "16px Arial", fill: "#ffffff", align: "left"};
