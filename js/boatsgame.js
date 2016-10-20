@@ -42,7 +42,7 @@ Tail.prototype.follow = function (headPoint, deltaTime, rotation) {
     for (var i = max_index; i >= 0; i--) {
         temp_point.copyFrom(this._points[i]);
         var temp_n = (this._points.length - i);
-        if (this._points[i].distance(head) < 3) {
+        if (this._points[i].distance(head) < 1) {
             this._points[i].copyFrom(head);
         }
         else {
