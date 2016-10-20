@@ -14,15 +14,16 @@ var Tail = function (game, x, y, key, frame, joints, scale) {
     var height = game.cache.getImage(key).height;
 
     this.points = new Array(joints);
+    this._points = new Array(joints);
     var length = joints - 1;
     for (var i = length; i >= 0; i--) {
         this.points[length - i] = (new Phaser.Point(exponentialLimit(width, i) * this.scaleInv, 0));
+        this._points[length - i] = this.points[length - i].clone();
     }
     console.log(this.points[this.points.length - 1]);
     Phaser.Rope.call(this, game, x, y, key, frame, this.points);
     this.scale.set(scale);
 
-    //= 0.5 * this.height;
     game.add.existing(this);
     return this;
 };
@@ -32,22 +33,83 @@ Tail.prototype = Object.create(Phaser.Rope.prototype);
 Tail.prototype.constructor = Tail;
 //Tail.prototype.update = function () {} update works, but no need for this object
 
-Tail.prototype.follow = function (headPoint, deltaTime) {
+Tail.prototype.follow = function (headPoint, deltaTime, rotation) {
 
     var head = new Phaser.Point(headPoint.x * this.scaleInv, headPoint.y * this.scaleInv)
     var prev_point = head.clone();
-    for (var i = this.points.length - 1; i >= 0; i--) {
-        var temp_point = this.points[i].clone();
-        var temp_n = (this.points.length - i);
-        //
-        Phaser.Point.interpolate(this.points[i], prev_point, deltaTime * (exponentialLimit(1, temp_n)), this.points[i]);
-        prev_point = temp_point.clone();
+    var max_index = this._points.length - 1;
+    var temp_point = new Phaser.Point(0, 0);
+    for (var i = max_index; i >= 0; i--) {
+        temp_point.copyFrom(this._points[i]);
+        var temp_n = (this._points.length - i);
+        if (this._points[i].distance(head) < 3) {
+            this._points[i].copyFrom(head);
+        }
+        else {
+            Phaser.Point.interpolate(this._points[i], prev_point, deltaTime * (exponentialLimit(1, temp_n)), this._points[i]);
+        }
+        prev_point.copyFrom(temp_point);
     }
-    this.points[this.points.length - 1] = head.clone();
+    this._points[max_index] = head.clone();
+    for (var i = max_index; i >= 0; i--) {
+        this.points[i].copyFrom(this._points[i]);
+        this.points[i].rotate(head.x, head.y, rotation);
+    }
+};
+
+
+var Boat = function (game, bodyKey, bodyFrames, physicsLayer, maxVelocity, maxAngular, drag) {
+    Phaser.Group.call(this, game, game.world);
+    physicsLayer = physicsLayer || 0;
+    maxVelocity = maxVelocity || new Phaser.Point(100, 100);
+    maxAngular = maxAngular || 100;
+    drag = drag || new Phaser.Point(100, 100);
+    this.bodyList = []
+    for (var i = 0; i < bodyFrames; i++) {
+        var temp = this.create(0, -i, bodyKey, i);
+        temp.anchor.set(0.5, 0.5);
+        this.bodyList.push(temp);
+    }
+    this.physicsBase = this.bodyList.splice(physicsLayer, 1);
+    this.physicsBase.anchor.set(0.5, 0.5);
+    this.physicsBody = this.physicsBase.body;
+    //this.anchorFrames = [];
+    this.anchorPoints = [];
+
+    this.game.physics.arcade.enable(this.physicsBase);
+    this.physicsBase.body.collideWorldBounds = true;
+    this.boatGroupBase.body.maxAngular = maxAngular;
+    this.boatGroupBase.body.maxVelocity.copyFrom(maxVelocity);
+    this.boatGroupBase.body.drag.copyFrom(drag);
 
 
 };
 
+Boat.prototype = Object.create(Phaser.Group.prototype);
+Boat.prototype.constructor = Boat;
+
+Boat.prototype.addAnchor = function (bodyFrame, relativePoint){
+    var temp = relativePoint.clone();
+    temp.x -= this.physicsBase.anchor.x * this.physicsBase.width;
+    temp.y -= this.physicsBase.anchor.y * this.physicsBase.height;
+    this.anchorPoints.push(temp);
+    this.anchorPoints[this.anchorPoints.length - 1].y -= bodyFrame;
+};
+
+Boat.prototype.updateAnchors = function(){
+    for(var i = 0; i < this.anchorPoints.length; i++)
+    {
+        this.anchorPoints[i].rotate(0, 0, this.physicsBase.body.rotation, true);
+    }
+};
+
+Boat.prototype.updateBody = function(){
+    for (var i = 0; i < this.bodyList.length; i++) {
+        this.bodyList[i].rotation = this.physicsBase.rotation;
+        this.bodyList[i].position.x = this.physicsBase.body.deltaX();
+        this.bodyList[i].position.y = this.physicsBase.body.deltaY();
+    }
+};
 
 var boatsGame = function (game) {
 };
@@ -155,8 +217,9 @@ boatsGame.prototype = {
 
         boatBackRight.rotate(this.boatGroupBase.position.x, this.boatGroupBase.position.y, this.boatGroupBase.body.rotation + 180, true);
 
-        this.leftRope.follow(boatBackLeft, deltaTime);
-        this.rightRope.follow(boatBackRight, deltaTime);
+        this.leftRope.follow(boatBackLeft, deltaTime, -Math.PI / 4);
+
+        this.rightRope.follow(boatBackRight, deltaTime, Math.PI / 4);
 
         var angle = this.boatGroupBase.body.rotation * (Math.PI / 180);
 

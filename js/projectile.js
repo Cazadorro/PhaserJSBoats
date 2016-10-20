@@ -133,10 +133,11 @@ var Weapon = {};
  * @param maxProjectiles {number} max number of Projectile objects that can be maintained
  * @returns {Weapon.Bullets}
  */
-Weapon.Bullets = function (game, projectileSpeed, fireInterval, maxProjectiles) {
+Weapon.Bullets = function (game, projectileSpeed, fireInterval, maxProjectiles, key) {
     // inherits from group, now of type group object
     Phaser.Group.call(this, game, game.world, 'Bullets', false, true, Phaser.Physics.ARCADE);
 
+    key = key || 'boatbullet1';
     // speed of bullet
     /**
      * speed of projectile
@@ -162,10 +163,11 @@ Weapon.Bullets = function (game, projectileSpeed, fireInterval, maxProjectiles) 
      */
     this.nextFireTime = 0;
 
+
     //creating projectile objects
     for (var i = 0; i < maxProjectiles; i++) {
         //  will not dispatch the onAddedToGroup event.
-        this.add(new Projectile(game, 'boatbullet1'), true);
+        this.add(new Projectile(game, key), true);
     }
     return this;
 };
