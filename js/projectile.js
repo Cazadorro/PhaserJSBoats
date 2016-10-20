@@ -58,6 +58,7 @@ var Projectile = function (game, key, updateFunction) {
      * @type boolean
      */
     this.tracking = false; // set tracking to false, a new variable
+
     /**
      * speed at which the projectile scales
      *

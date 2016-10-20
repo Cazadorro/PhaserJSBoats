@@ -11,7 +11,7 @@ preload.prototype = {
         this.game.load.image("gameover", "img/gameover.png");
 
         this.game.load.spritesheet("boats", "img/boatsheet.png", 64, 32);
-        this.game.load.image("boattrail", "img/boat_trail.png");
+        this.game.load.image("boattrail", "img/boat_trail_avg.png");
         this.game.load.image("boatgun", "img/boat_gun.png");
         this.game.load.image("boatbullet1", "img/boat_bullet1.png");
     },
