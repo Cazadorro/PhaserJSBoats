@@ -64,23 +64,32 @@ var Boat = function (game, bodyKey, bodyFrames, physicsLayer, maxVelocity, maxAn
     maxVelocity = maxVelocity || new Phaser.Point(100, 100);
     maxAngular = maxAngular || 100;
     drag = drag || new Phaser.Point(100, 100);
-    this.bodyList = []
+    this.bodyList = [];
     for (var i = 0; i < bodyFrames; i++) {
         var temp = this.create(0, -i, bodyKey, i);
         temp.anchor.set(0.5, 0.5);
         this.bodyList.push(temp);
     }
-    this.physicsBase = this.bodyList.splice(physicsLayer, 1);
+    this.physicsBase = this.bodyList.splice(physicsLayer, 1)[0];
     this.physicsBase.anchor.set(0.5, 0.5);
-    this.physicsBody = this.physicsBase.body;
+
     //this.anchorFrames = [];
-    this.anchorPoints = [];
+    this.baseAnchors = [];
+    this.relativeAnchors = [];
+    this.worldAnchors = [];
+    this.components = [];
+
+    this.layerOffsets = new Array(bodyFrames);
+    for (var i = 0; i < bodyFrames; i++) {
+        this.layerOffsets[i] = 0;
+    }
 
     this.game.physics.arcade.enable(this.physicsBase);
     this.physicsBase.body.collideWorldBounds = true;
-    this.boatGroupBase.body.maxAngular = maxAngular;
-    this.boatGroupBase.body.maxVelocity.copyFrom(maxVelocity);
-    this.boatGroupBase.body.drag.copyFrom(drag);
+    this.physicsBase.body.maxAngular = maxAngular;
+    this.physicsBase.body.maxVelocity.copyFrom(maxVelocity);
+    this.physicsBase.body.drag.copyFrom(drag);
+    this.physicsBody = this.physicsBase.body;
 
 
 };
@@ -88,27 +97,53 @@ var Boat = function (game, bodyKey, bodyFrames, physicsLayer, maxVelocity, maxAn
 Boat.prototype = Object.create(Phaser.Group.prototype);
 Boat.prototype.constructor = Boat;
 
-Boat.prototype.addAnchor = function (bodyFrame, relativePoint){
+Boat.prototype.addAnchor = function (bodyFrame, relativePoint) {
     var temp = relativePoint.clone();
     temp.x -= this.physicsBase.anchor.x * this.physicsBase.width;
-    temp.y -= this.physicsBase.anchor.y * this.physicsBase.height;
-    this.anchorPoints.push(temp);
-    this.anchorPoints[this.anchorPoints.length - 1].y -= bodyFrame;
+    temp.y -= (this.physicsBase.anchor.y * this.physicsBase.height);
+    this.baseAnchors.push(temp.clone());
+    this.relativeAnchors.push(new Phaser.Point(this.physicsBase.x, this.physicsBase.y - bodyFrame));
+    this.worldAnchors.push(this.relativeAnchors[this.relativeAnchors.length - 1].clone());
+    var worldPos = this.worldAnchors[this.worldAnchors.length - 1];
+    var relativPos = this.relativeAnchors[this.relativeAnchors.length - 1];
+    var basePos = this.baseAnchors[this.baseAnchors.length - 1];
+
+    Phaser.Point.add(worldPos, basePos, worldPos);
+    worldPos.rotate(relativPos.x, relativPos.y, this.physicsBase.body.rotation, true);
+    return worldPos;
 };
 
-Boat.prototype.updateAnchors = function(){
-    for(var i = 0; i < this.anchorPoints.length; i++)
-    {
-        this.anchorPoints[i].rotate(0, 0, this.physicsBase.body.rotation, true);
+Boat.prototype.updateAnchors = function () {
+    for (var i = 0; i < this.relativeAnchors.length; i++) {
+
+        this.relativeAnchors[i].x += this.physicsBase.body.deltaX();
+        this.relativeAnchors[i].y += this.physicsBase.body.deltaY();
+        this.worldAnchors[i].copyFrom(this.relativeAnchors[i]);
+        var worldPos = this.worldAnchors[i];
+        Phaser.Point.add(worldPos, this.baseAnchors[i], worldPos);
+        worldPos.rotate(this.relativeAnchors[i].x, this.relativeAnchors[i].y, this.physicsBase.body.rotation, true);
     }
 };
 
-Boat.prototype.updateBody = function(){
+Boat.prototype.updateBody = function () {
     for (var i = 0; i < this.bodyList.length; i++) {
         this.bodyList[i].rotation = this.physicsBase.rotation;
-        this.bodyList[i].position.x = this.physicsBase.body.deltaX();
-        this.bodyList[i].position.y = this.physicsBase.body.deltaY();
+        this.bodyList[i].position.x += this.physicsBase.body.deltaX();
+        this.bodyList[i].position.y += this.physicsBase.body.deltaY();
     }
+};
+
+Boat.prototype.addComponent = function (key, frameLayer, anchorPoint, frame) {
+
+    anchorPoint = anchorPoint || new Phaser.Point(0, 0);
+    for (var i = frameLayer + 1; i < this.bodyList.length; i++) {
+        this.layerOffsets[i] += 1;
+    }
+    var offsetIndex = this.layerOffsets[frameLayer] + frameLayer;
+    var component = this.create(anchorPoint.x, anchorPoint.y, key, frame, true, offsetIndex);
+    component.position = anchorPoint;
+    this.components.push(component);
+    return component;
 };
 
 var boatsGame = function (game) {
@@ -129,49 +164,12 @@ boatsGame.prototype = {
         this.rightRope = new Tail(this.game, 0, 0, 'boattrail', null, 64, 0.5);
         //this.add.existing(this.leftRope);
 
-        this.boatGroup = this.game.add.group();
-        this.boatGroup.x = 0;
-        this.boatGroup.y = 0;
-
-        this.boatGroup.physicsBodyType = Phaser.Physics.ARCADE;
-        //this.boatGroup.enableBody = true;
-        //this.boatGroup.body.allowRotation = true;
-
-        //this.boatBase = this.game.add.sprite(100, 100, 'boats', 0);
-        //this.boatBase.anchor.set(0.5, 0.5);
-        //this.game.physics.arcade.enable(this.boatBase);
-        //console.log(this.boatBase.body);
-        //this.boatBase.body.allowRotation = true;
-        //this.boatBase.body.collideWorldBounds = false;
-        //this.boatBase.smoothed = false;
-        //this.childs = [];
-        this.baseBoatList = [];
-        for (var i = 0; i < 16; i++) {
-            var temp1 = this.boatGroup.create(0, -i, 'boats', i);
-            temp1.anchor.set(0.5, 0.5);
-            this.baseBoatList.push(temp1);
-            //var temp2 = this.boatBase.addChild(this.game.add.sprite(0, -i, 'boats', i));
-            //temp2.anchor.set(0.5, 0.5);
-            //this.childs.push(temp2);
-        }
-        this.boatgun1 = this.boatGroup.create(0, -11, "boatgun");
+        this.boat1 = new Boat(this.game, 'boats', 16, 0);
+        this.gun1Anchor = this.boat1.addAnchor(11, new Phaser.Point(13, 16));
+        this.leftBackAnchor = this.boat1.addAnchor(0, new Phaser.Point(10, 12));
+        this.rightBackAnchor = this.boat1.addAnchor(0, new Phaser.Point(10, 20));
+        this.boatgun1 = this.boat1.addComponent('boatgun', 11, this.gun1Anchor);
         this.boatgun1.anchor.set(0.0, 0.5);
-        this.boatgun1.truPos = new Phaser.Point(this.boatgun1.x, this.boatgun1.y);
-        this.boatgun1.moveDown();
-        this.boatgun1.moveDown();
-        this.boatgun1.moveDown();
-        this.boatgun1.moveDown();
-        this.boatgun1.moveDown();
-
-
-        this.boatGroupBase = this.boatGroup.getChildAt(0);
-        this.game.physics.arcade.enable(this.boatGroupBase);
-        this.boatGroupBase.body.allowRotation = true;
-        this.boatGroupBase.body.collideWorldBounds = true;
-        this.boatGroupBase.smoothed = false;
-        this.boatGroupBase.body.maxAngular = 100;
-        this.boatGroupBase.body.maxVelocity.set(100, 100);
-        this.boatGroupBase.body.drag.set(80, 80);
 
         //start(explode, lifespan, frequency, quantity, forceQuantity)
 
@@ -204,67 +202,39 @@ boatsGame.prototype = {
     update: function () {
         var deltaTime = (this.game.time.elapsedMS * this.game.time.fps) / 1000;
 
-        var boatBackLeft = this.boatGroupBase.position.clone();
-        boatBackLeft.x += 16;
-        boatBackLeft.y += 4;
+        this.leftRope.follow(this.leftBackAnchor, deltaTime, -Math.PI / 4);
 
-        var boatBackRight = this.boatGroupBase.position.clone();
-        boatBackRight.x += 16;
-        boatBackRight.y -= 4;
+        this.rightRope.follow(this.rightBackAnchor, deltaTime, Math.PI / 4);
 
-        //console.log(this.boatGroupBase.body.facing);
-        boatBackLeft.rotate(this.boatGroupBase.position.x, this.boatGroupBase.position.y, this.boatGroupBase.body.rotation + 180, true);
+        var angle = this.boat1.physicsBody.rotation * (Math.PI / 180);
 
-        boatBackRight.rotate(this.boatGroupBase.position.x, this.boatGroupBase.position.y, this.boatGroupBase.body.rotation + 180, true);
-
-        this.leftRope.follow(boatBackLeft, deltaTime, -Math.PI / 4);
-
-        this.rightRope.follow(boatBackRight, deltaTime, Math.PI / 4);
-
-        var angle = this.boatGroupBase.body.rotation * (Math.PI / 180);
-
-        this.boatGroupBase.body.angularVelocity *= .90 * deltaTime;
+        this.boat1.physicsBody.angularVelocity *= .90 * deltaTime;
         //this.boatGroupBase.body.acceleration.x *= .60 * deltaTime;
         //this.boatGroupBase.body.acceleration.y *= .60 * deltaTime;
 
         if (this.keys.left.isDown || this.input.keyboard.isDown(Phaser.Keyboard.A)) {
             //  Move to the left
-            this.boatGroupBase.body.angularVelocity -= this.angleSpeed * deltaTime;
+            this.boat1.physicsBody.angularVelocity -= this.angleSpeed * deltaTime;
         }
         if (this.keys.right.isDown || this.input.keyboard.isDown(Phaser.Keyboard.D)) {
             //  Move to the right
-            this.boatGroupBase.body.angularVelocity += this.angleSpeed * deltaTime;
+            this.boat1.physicsBody.angularVelocity += this.angleSpeed * deltaTime;
         }
         if (this.keys.up.isDown || this.input.keyboard.isDown(Phaser.Keyboard.W)) {
             //  Move to the right
-            this.boatGroupBase.body.velocity.x += this.speed * Math.cos(angle) * deltaTime;
-            this.boatGroupBase.body.velocity.y += this.speed * Math.sin(angle) * deltaTime;
+            this.boat1.physicsBody.velocity.x += this.speed * Math.cos(angle) * deltaTime;
+            this.boat1.physicsBody.velocity.y += this.speed * Math.sin(angle) * deltaTime;
         }
         if (this.keys.down.isDown || this.input.keyboard.isDown(Phaser.Keyboard.S)) {
             //  Move to the right
-            this.boatGroupBase.body.velocity.x -= this.speed * Math.cos(angle) * deltaTime;
-            this.boatGroupBase.body.velocity.y -= this.speed * Math.sin(angle) * deltaTime;
+            this.boat1.physicsBody.velocity.x -= this.speed * Math.cos(angle) * deltaTime;
+            this.boat1.physicsBody.velocity.y -= this.speed * Math.sin(angle) * deltaTime;
         }
 
-
-        for (var i = 1; i < 16; i++) {
-            var temp = this.baseBoatList[i];
-            temp.rotation = this.boatGroupBase.rotation;
-            temp.position.x += this.boatGroupBase.body.deltaX();
-            temp.position.y += this.boatGroupBase.body.deltaY();
-        }
-
-        //this.boatgun1.rotation = this.boatGroupBase.rotation;
-        this.boatgun1.truPos.x += this.boatGroupBase.body.deltaX();
-        this.boatgun1.truPos.y += this.boatGroupBase.body.deltaY();
-        var gun1pos = this.boatgun1.truPos.clone();
-        gun1pos.x += 20;
-
-        //console.log(this.boatGroupBase.body.facing);
-        gun1pos.rotate(this.boatgun1.truPos.x, this.boatgun1.truPos.y, this.boatGroupBase.body.rotation + 180, true);
-        this.boatgun1.position.x = gun1pos.x;
-        this.boatgun1.position.y = gun1pos.y;
+        this.boat1.updateBody();
+        this.boat1.updateAnchors();
         this.boatgun1.rotation = this.game.physics.arcade.angleToPointer(this.boatgun1);
+
         if (this.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)) {
 
             this.weapon.fire(this.boatgun1.position, this.game.input.mousePointer)
