@@ -1,12 +1,3 @@
-
-var boatsGame = function (game) {
-    spriteNumber = null;
-    number = 0;
-    workingButtons = true;
-    higher = true;
-    score = 0;
-};
-
 var exponentialLimit = function (limit, x, offset) {
     if (offset === undefined) {
         offset = 0.0001
@@ -14,6 +5,14 @@ var exponentialLimit = function (limit, x, offset) {
 
     var xSq = x * x;
     return ((limit * (xSq)) + offset) / (xSq + x + 1);
+};
+
+var boatsGame = function (game) {
+    spriteNumber = null;
+    number = 0;
+    workingButtons = true;
+    higher = true;
+    score = 0;
 };
 
 boatsGame.prototype = {

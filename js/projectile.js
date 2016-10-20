@@ -2,8 +2,32 @@
 //  This is a simple Sprite object that we set a few properties on
 //  It is fired by all of the Weapon classes
 
-// Projectile - subclass of Phaser.Sprite
 
+/**
+ * Update the x and y of the projectile linearly
+ * change the direction of the projectile to match tracking
+ * @param projectile {Projectile} projectile to update
+ */
+function trackUpdate(projectile) {
+    projectile.rotation = Math.atan2(projectile.body.velocity.y, projectile.body.velocity.x);
+    if (projectile.scaleSpeed > 0) {
+        projectile.scale.x += projectile.scaleSpeed;
+        projectile.scale.y += projectile.scaleSpeed;
+    }
+}
+
+/**
+ * Update the x and y of the projectile linearly
+ * @param projectile {Projectile} projectile to update
+ */
+function simpleUpdate(projectile) {
+    if (projectile.scaleSpeed > 0) {
+        projectile.scale.x += projectile.scaleSpeed;
+        projectile.scale.y += projectile.scaleSpeed;
+    }
+}
+
+// Projectile - subclass of Phaser.Sprite
 /**
  * The Sprite object is the base for all textured objects that are rendered to the screen
  *
@@ -12,8 +36,9 @@
  * @constructor
  * @param game {Phaser.Game} game object for this sprite
  * @param key {string} key for the texture for this object
+ * @param updateFunction {function} function used when updating the projectile
  */
-var Projectile = function (game, key) {
+var Projectile = function (game, key, updateFunction) {
     // this is how we do inheritance in javascript, calls the sprite constructor
     Phaser.Sprite.call(this, game, 0, 0, key);
 
@@ -40,6 +65,15 @@ var Projectile = function (game, key) {
      * @type number
      */
     this.scaleSpeed = 0;  // speed?
+
+    /**
+     * function called at update
+     *
+     * @property updateFunction
+     * @type function
+     * @default simpleUpdate
+     */
+    this.updateFunction = updateFunction || simpleUpdate;
 
 };
 
@@ -71,6 +105,7 @@ Projectile.prototype.fire = function (startPoint, angle, speed, gravityX, gravit
 
     this.angle = angle;
 
+
     this.body.gravity.set(gravityX, gravityY);
 
 };
@@ -80,16 +115,7 @@ Projectile.prototype.fire = function (startPoint, angle, speed, gravityX, gravit
  * @method update
  */
 Projectile.prototype.update = function () {
-
-    if (this.tracking) {
-        this.rotation = Math.atan2(this.body.velocity.y, this.body.velocity.x);
-    }
-
-    if (this.scaleSpeed > 0) {
-        this.scale.x += this.scaleSpeed;
-        this.scale.y += this.scaleSpeed;
-    }
-
+    this.updateFunction(this);
 };
 
 // creating New Object();
