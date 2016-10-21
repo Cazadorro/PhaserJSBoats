@@ -76,7 +76,6 @@ var Sprite3D = function (game, bodyKey, bodyFrames, physicsLayer, enablePhysics,
     this.physicsBase = this.bodyList.splice(physicsLayer, 1)[0];
     this.physicsBase.anchor.copyFrom(anchor);
 
-    //this.anchorFrames = [];
     this.baseAnchors = [];
     this.relativeAnchors = [];
     this.worldAnchors = [];
@@ -96,10 +95,6 @@ var Sprite3D = function (game, bodyKey, bodyFrames, physicsLayer, enablePhysics,
         this.physicsBase.body.drag.copyFrom(drag);
     }
     this.physicsBody = this.physicsBase.body || this.physicsBase;
-    //this.position = this.physicsBase.position;
-    //this.rotation = this.physicsBase.rotation;
-
-
 };
 
 Sprite3D.prototype = Object.create(Phaser.Group.prototype);
@@ -127,12 +122,10 @@ Sprite3D.prototype.updateAnchors = function () {
     if (this.physicsBase.body) {
         deltaX = this.physicsBody.deltaX();
         deltaY = this.physicsBody.deltaY();
-        //rotation = this.physicsBody.rotation;
     }
     else {
         deltaX = this.physicsBody.deltaX;
         deltaY = this.physicsBody.deltaY;
-        //rotation = this.physicsBody.angle;
     }
     for (var i = 0; i < this.relativeAnchors.length; i++) {
 
@@ -236,19 +229,25 @@ boatsGame.prototype = {
         this.rightRope = new Tail(this.game, 0, 0, 'boattrail', null, 64, 0.5);
         //this.add.existing(this.leftRope);
 
-        this.boat1 = new Sprite3D(this.game, 'boats', 16, 0, true, null, null, null, new Phaser.Point(0, 0.5));
+        this.boat1 = new Sprite3D(this.game, 'boats', 16, 0, true, null, null, null, new Phaser.Point(0.1, 0.5));
         this.gun1Anchor = this.boat1.addAnchor(11, new Phaser.Point(13, 16));
         this.gun2Anchor = this.boat1.addAnchor(12, new Phaser.Point(51, 16));
         this.leftBackAnchor = this.boat1.addAnchor(0, new Phaser.Point(10, 12));
         this.rightBackAnchor = this.boat1.addAnchor(0, new Phaser.Point(10, 20));
-        this.boatgun1 = this.boat1.addComponent('boatgun', 11, this.gun1Anchor);
-        this.boatgun1.anchor.set(0.0, 0.5);
 
-        this.weapon = new Weapon.Bullets(this.game, 'boatbullet1');
+        this.weapon1 = new Weapon.Bullets(this.game, 'boatbullet1');
+        this.boatgun1 = new Turret3D(this.game, 'boatgun', 1, 0,
+            this.weapon1, 0, new Phaser.Point(16, 8),
+            null, new Phaser.Point(0, 0.5));
+        this.boat1.add3DComponent(this.boatgun1, 11, this.gun1Anchor);
+
+        this.weapon2 = new Weapon.Bullets(this.game, 'boatbullet1');
         this.boatgun2 = new Turret3D(this.game, 'boatgun', 1, 0,
-            this.weapon, 0, new Phaser.Point(16, 8),
+            this.weapon2, 0, new Phaser.Point(16, 8),
             null, new Phaser.Point(0, 0.5));
         this.boat1.add3DComponent(this.boatgun2, 12, this.gun2Anchor);
+
+
 
         //this.game.physics.arcade.enable(this.boatGroup);
         this.keys = this.game.input.keyboard.createCursorKeys();
@@ -302,15 +301,19 @@ boatsGame.prototype = {
 
         this.boat1.updateBody();
         this.boat1.updateAnchors();
+        this.boatgun1.updateAnchors();
+        this.boatgun1.updateBody();
         this.boatgun2.updateAnchors();
         this.boatgun2.updateBody();
-        this.boatgun1.rotation = this.game.physics.arcade.angleToPointer(this.boatgun1);
+        this.boatgun1.physicsBase.rotation = this.game.physics.arcade.angleToPointer(this.boatgun1.physicsBase.position);
         this.boatgun2.physicsBase.rotation = this.game.physics.arcade.angleToPointer(this.boatgun2.physicsBase.position);
 
         if (this.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)) {
+            this.boatgun1.fire(this.game.input.mousePointer);
             this.boatgun2.fire(this.game.input.mousePointer);
         }
-        this.text1.text = "number of bullets: " + this.weapon.countLiving();
+        var totalBullets = this.weapon1.countLiving() + this.weapon2.countLiving();
+        this.text1.text = "number of bullets: " + totalBullets;
 
     }
 };

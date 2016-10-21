@@ -144,7 +144,7 @@ Weapon.Bullets = function (game, key, projectileSpeed, fireInterval, maxProjecti
      * @property projectileSpeed
      * @type {number}
      */
-    this.projectileSpeed = projectileSpeed || 10;
+    this.projectileSpeed = projectileSpeed || 200;
     // frequency at which to fire bullet
     /**
      * interval between shots
