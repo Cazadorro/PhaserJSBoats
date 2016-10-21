@@ -128,6 +128,7 @@ var Weapon = {};
  * @extends Phaser.Group
  * @constructor
  * @param game {Phaser.Game} game object
+ * @param key {string} image key
  * @param projectileSpeed {number} speed of projectiles
  * @param fireInterval {number} interval before you can fire again
  * @param maxProjectiles {number} max number of Projectile objects that can be maintained

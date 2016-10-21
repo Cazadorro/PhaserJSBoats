@@ -1,18 +1,42 @@
+/**
+ * ((limit * x^2) + offset)/(x^2 + x + 1)
+ * creates an asymptote at limit
+ * @param limit {number} asymptote
+ * @param x {number} x value in function
+ * @param offset {number} offset of numerator
+ * @returns {number} the reusulting y
+ */
 var exponentialLimit = function (limit, x, offset) {
     if (offset === undefined) {
         offset = 0.0001
     }
-
     var xSq = x * x;
     return ((limit * (xSq)) + offset) / (xSq + x + 1);
 };
 
+/**
+ * tail made of rope, where each partition of the tail follows the other
+ * @class Tail
+ * @extends Phaser.Rope
+ * @param game {Phaser.Game} game object
+ * @param x {number} x position
+ * @param y {number} y position
+ * @param key {string} image key
+ * @param frame {number} frame used
+ * @param joints {number} number of total joints
+ * @param scale {number} vertical and horizontal scaling of the object
+ * @returns {Tail}
+ * @constructor
+ */
 var Tail = function (game, x, y, key, frame, joints, scale) {
     scale = scale || 1;
+    // inverse the scale in order to get positioning in world cordinates
     this.scaleInv = (1 / scale);
     var width = game.cache.getImage(key).width;
     var height = game.cache.getImage(key).height;
 
+    // need to maintian two sets of points, an internal set of points that follow linearly
+    // and another set of points to represent transformations applied to those points (ie rotation)
     this.points = new Array(joints);
     this._points = new Array(joints);
     var length = joints - 1;
@@ -23,6 +47,7 @@ var Tail = function (game, x, y, key, frame, joints, scale) {
     Phaser.Rope.call(this, game, x, y, key, frame, this.points);
     this.scale.set(scale);
 
+    //now the tail actually show up by default
     game.add.existing(this);
     return this;
 };
@@ -32,6 +57,13 @@ Tail.prototype = Object.create(Phaser.Rope.prototype);
 Tail.prototype.constructor = Tail;
 //Tail.prototype.update = function () {} update works, but no need for this object
 
+/**
+ * follows the given point based on deltaTime and rotation away from that point as a pivot
+ * @method follow
+ * @param headPoint {Phaser.Point} point to follow
+ * @param deltaTime {number} delta time for fps
+ * @param rotation {number} rotation in radians
+ */
 Tail.prototype.follow = function (headPoint, deltaTime, rotation) {
 
     var head = new Phaser.Point(headPoint.x * this.scaleInv, headPoint.y * this.scaleInv)
@@ -41,14 +73,17 @@ Tail.prototype.follow = function (headPoint, deltaTime, rotation) {
     for (var i = max_index; i >= 0; i--) {
         temp_point.copyFrom(this._points[i]);
         var temp_n = (this._points.length - i);
+        // if we are close enough, we just set the position to head to avoid visual artifacts
         if (this._points[i].distance(head) < 1) {
             this._points[i].copyFrom(head);
         }
         else {
+            // otherwise we interpolate the position to the next point
             Phaser.Point.interpolate(this._points[i], prev_point, deltaTime * (exponentialLimit(1, temp_n)), this._points[i]);
         }
         prev_point.copyFrom(temp_point);
     }
+    // then we copy all the internal point positions to apply rotation transformations.
     this._points[max_index] = head.clone();
     for (var i = max_index; i >= 0; i--) {
         this.points[i].copyFrom(this._points[i]);
@@ -56,7 +91,21 @@ Tail.prototype.follow = function (headPoint, deltaTime, rotation) {
     }
 };
 
-
+/**
+ * Group object that emulates 3D via moving sprites in y direction based on position
+ * @class Sprite3D
+ * @extends Phaser.Group
+ * @param game {Phaser.Game} game object used
+ * @param bodyKey {string} image key for object
+ * @param bodyFrames {number} number of frames in body
+ * @param physicsLayer {number} layer within bodyFrames that corrisponds to the layer used for physics
+ * @param enablePhysics {boolean} whether or not to enable physics on this object
+ * @param maxVelocity {number} max speed of the object
+ * @param maxAngular {number} max angular velocity of the object
+ * @param drag {number} drag on object
+ * @param anchor {Phaser.Point} pivot of object
+ * @constructor
+ */
 var Sprite3D = function (game, bodyKey, bodyFrames, physicsLayer, enablePhysics, maxVelocity, maxAngular, drag, anchor) {
     Phaser.Group.call(this, game, game.world);
     physicsLayer = physicsLayer || 0;
@@ -67,15 +116,18 @@ var Sprite3D = function (game, bodyKey, bodyFrames, physicsLayer, enablePhysics,
     maxAngular = maxAngular || 100;
     drag = drag || new Phaser.Point(100, 100);
     anchor = anchor || new Phaser.Point(0.5, 0.5);
+    // create the reference list to the parts of the group that represent the body
     this.bodyList = [];
     for (var i = 0; i < bodyFrames; i++) {
         var temp = this.create(0, -i, bodyKey, i);
         temp.anchor.copyFrom(anchor);
         this.bodyList.push(temp);
     }
+    // extract the physics layer out to make an easy reference to it
     this.physicsBase = this.bodyList.splice(physicsLayer, 1)[0];
-    this.physicsBase.anchor.copyFrom(anchor);
+    //this.physicsBase.anchor.copyFrom(anchor);
 
+    
     this.baseAnchors = [];
     this.relativeAnchors = [];
     this.worldAnchors = [];
@@ -100,6 +152,13 @@ var Sprite3D = function (game, bodyKey, bodyFrames, physicsLayer, enablePhysics,
 Sprite3D.prototype = Object.create(Phaser.Group.prototype);
 Sprite3D.prototype.constructor = Sprite3D;
 
+/**
+ * Adds a new anchor point, point in which other objects can reference and get the location of at all times
+ * @method addAnchor
+ * @param bodyFrame {number} frame in which anchor exists
+ * @param relativePoint {Phaser.Point} position relative to sprite sheet pixels (ie 0,0 is top left of sprite)
+ * @returns {Phaser.Point} point that updates with real position relative to world
+ */
 Sprite3D.prototype.addAnchor = function (bodyFrame, relativePoint) {
     var temp = relativePoint.clone();
     temp.x -= this.physicsBase.anchor.x * this.physicsBase.width;
@@ -117,6 +176,11 @@ Sprite3D.prototype.addAnchor = function (bodyFrame, relativePoint) {
     return worldPos;
 };
 
+/**
+ * updates the anchors with current physics body position
+ * @method updateAnchors
+ *
+ */
 Sprite3D.prototype.updateAnchors = function () {
     var deltaX, deltaY;
     if (this.physicsBase.body) {
@@ -138,6 +202,10 @@ Sprite3D.prototype.updateAnchors = function () {
     }
 };
 
+/**
+ * updates the body with current physics body position
+ * @method updateBody
+ */
 Sprite3D.prototype.updateBody = function () {
     var deltaX, deltaY;
     if (this.physicsBase.body) {
@@ -156,7 +224,16 @@ Sprite3D.prototype.updateBody = function () {
 };
 
 
-Sprite3D.prototype.addComponent = function (key, frameLayer, anchorPoint, frame) {
+/**
+ * adds a new sprite component to the Sprite3D group
+ * @method addSprite
+ * @param key {number} image key
+ * @param frameLayer {number} layer where sprite will reside
+ * @param anchorPoint {Phaser.Point} point to anchor new object to
+ * @param frame {number} frame of sprite used
+ * @returns {Phaser.Sprite}
+ */
+Sprite3D.prototype.addSprite = function (key, frameLayer, anchorPoint, frame) {
 
     anchorPoint = anchorPoint || new Phaser.Point(0, 0);
     for (var i = frameLayer + 1; i < this.bodyList.length; i++) {
@@ -169,6 +246,11 @@ Sprite3D.prototype.addComponent = function (key, frameLayer, anchorPoint, frame)
     return component;
 };
 
+/**
+ * recalibrates anchors based on new position, or internal physicsBase position
+ * @method reCalibrateAnchors
+ * @param newBasePosition {Phaser.Point} position to recalibrate to
+ */
 Sprite3D.prototype.reCalibrateAnchors = function (newBasePosition) {
     newBasePosition = newBasePosition || this.physicsBase;
     for (var i = 0; i < this.baseAnchors.length; i++) {
@@ -183,7 +265,13 @@ Sprite3D.prototype.reCalibrateAnchors = function (newBasePosition) {
     }
 };
 
-
+/**
+ * adds new Sprite3D object to the Sprite3D group
+ * @param sprite3D {Sprite3D} new sprite 3D object
+ * @param frameLayer {number} layer to add object to
+ * @param anchorPoint {Phaser.Point} anchor to align object to
+ * @returns {Sprite3D} component added
+ */
 Sprite3D.prototype.add3DComponent = function (sprite3D, frameLayer, anchorPoint) {
 
     anchorPoint = anchorPoint || new Phaser.Point(0, 0);
@@ -198,6 +286,21 @@ Sprite3D.prototype.add3DComponent = function (sprite3D, frameLayer, anchorPoint)
     return component;
 };
 
+/**
+ * represents a turret object that can shoot projectiles
+ * @class Turret3D
+ * @extends Sprite3D
+ * @param game {Phaser.Game} game object used
+ * @param bodyKey {string} image key for object
+ * @param bodyFrames {number} number of frames in body
+ * @param physicsLayer {number} layer within bodyFrames that corrisponds to the layer used for physics
+ * @param weapon {Weapon} weapon object used to shoot
+ * @param anchorFrame {number} frame to anchor on
+ * @param outputAnchor {Phaser.Point} point to shoot from
+ * @param maxAngular {number} max angular velocity
+ * @param anchor {Phaser.Point} pivot of object
+ * @constructor
+ */
 var Turret3D = function (game, bodyKey, bodyFrames, physicsLayer, weapon, anchorFrame, outputAnchor, maxAngular, anchor) {
     Sprite3D.call(this, game, bodyKey, bodyFrames, physicsLayer, false, null, null, null, anchor);
     this.barrel = this.addAnchor(anchorFrame, outputAnchor);
@@ -207,6 +310,11 @@ var Turret3D = function (game, bodyKey, bodyFrames, physicsLayer, weapon, anchor
 Turret3D.prototype = Object.create(Sprite3D.prototype);
 Turret3D.prototype.constructor = Turret3D;
 
+/**
+ * calls internal weapon fire method to shoot at target point
+ * @method fire
+ * @param targetPoint {Phaser.Point} point to shoot at
+ */
 Turret3D.prototype.fire = function (targetPoint) {
     this.weapon.fire(this.barrel, targetPoint);
 };
