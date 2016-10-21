@@ -4,9 +4,9 @@
 
 
 /**
- * Update the x and y of the projectile linearly
- * change the direction of the projectile to match tracking
- * @param projectile {Projectile} projectile to update
+ * Update the x and y of the weapon linearly
+ * change the direction of the weapon to match tracking
+ * @param projectile {Projectile} weapon to update
  */
 function trackUpdate(projectile) {
     projectile.rotation = Math.atan2(projectile.body.velocity.y, projectile.body.velocity.x);
@@ -17,8 +17,8 @@ function trackUpdate(projectile) {
 }
 
 /**
- * Update the x and y of the projectile linearly
- * @param projectile {Projectile} projectile to update
+ * Update the x and y of the weapon linearly
+ * @param projectile {Projectile} weapon to update
  */
 function simpleUpdate(projectile) {
     if (projectile.scaleSpeed > 0) {
@@ -36,7 +36,7 @@ function simpleUpdate(projectile) {
  * @constructor
  * @param game {Phaser.Game} game object for this sprite
  * @param key {string} key for the texture for this object
- * @param updateFunction {function} function used when updating the projectile
+ * @param updateFunction {function} function used when updating the weapon
  */
 var Projectile = function (game, key, updateFunction) {
     // this is how we do inheritance in javascript, calls the sprite constructor
@@ -52,7 +52,7 @@ var Projectile = function (game, key, updateFunction) {
     this.exists = false; // set exist to false initially
 
     /**
-     * whether or not the projectile tracks
+     * whether or not the weapon tracks
      *
      * @property tracking
      * @type boolean
@@ -60,7 +60,7 @@ var Projectile = function (game, key, updateFunction) {
     this.tracking = false; // set tracking to false, a new variable
 
     /**
-     * speed at which the projectile scales
+     * speed at which the weapon scales
      *
      * @property scaleSpeed
      * @type number
@@ -84,11 +84,11 @@ Projectile.prototype.constructor = Projectile;
 
 // adding a member function
 /**
- * Fires projectile
+ * Fires weapon
  *
  * @method fire
- * @param startPoint (Phaser.Point} starting point of the projectile
- * @param angle {number} angle in degrees of the projectile
+ * @param startPoint (Phaser.Point} starting point of the weapon
+ * @param angle {number} angle in degrees of the weapon
  * @param speed {number}
  * @param gravityX {number} gravity in x direction
  * @param gravityY {number} gravity in y direction
@@ -112,7 +112,7 @@ Projectile.prototype.fire = function (startPoint, angle, speed, gravityX, gravit
 };
 
 /**
- * Updates attributes of projectile, automatically called.
+ * Updates attributes of weapon, automatically called.
  * @method update
  */
 Projectile.prototype.update = function () {
@@ -133,18 +133,18 @@ var Weapon = {};
  * @param maxProjectiles {number} max number of Projectile objects that can be maintained
  * @returns {Weapon.Bullets}
  */
-Weapon.Bullets = function (game, projectileSpeed, fireInterval, maxProjectiles, key) {
+Weapon.Bullets = function (game, key, projectileSpeed, fireInterval, maxProjectiles) {
     // inherits from group, now of type group object
     Phaser.Group.call(this, game, game.world, 'Bullets', false, true, Phaser.Physics.ARCADE);
 
     key = key || 'boatbullet1';
     // speed of bullet
     /**
-     * speed of projectile
+     * speed of weapon
      * @property projectileSpeed
      * @type {number}
      */
-    this.projectileSpeed = projectileSpeed || 100;
+    this.projectileSpeed = projectileSpeed || 10;
     // frequency at which to fire bullet
     /**
      * interval between shots
@@ -164,7 +164,7 @@ Weapon.Bullets = function (game, projectileSpeed, fireInterval, maxProjectiles, 
     this.nextFireTime = 0;
 
 
-    //creating projectile objects
+    //creating weapon objects
     for (var i = 0; i < maxProjectiles; i++) {
         //  will not dispatch the onAddedToGroup event.
         this.add(new Projectile(game, key), true);
