@@ -127,7 +127,7 @@ var Sprite3D = function (game, bodyKey, bodyFrames, physicsLayer, enablePhysics,
     this.physicsBase = this.bodyList.splice(physicsLayer, 1)[0];
     //this.physicsBase.anchor.copyFrom(anchor);
 
-    
+
     this.baseAnchors = [];
     this.relativeAnchors = [];
     this.worldAnchors = [];
